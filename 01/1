@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+t = 0
+puts ARGF.readlines.inject(0) { |t,n| puts n ; t+= (n[/^\D*(\d)/, 1] + n[/(\d)\D*$/, 1]).to_i }

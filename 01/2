@@ -1,0 +1,42 @@
+#!/usr/bin/env ruby
+
+subs = {
+  'one'   => '1',
+  'two'   => '2',
+  'three' => '3',
+  'four'  => '4',
+  'five'  => '5',
+  'six'   => '6',
+  'seven' => '7',
+  'eight' => '8',
+  'nine'  => '9',
+}
+
+total = 0
+ARGF.readlines.map(&:chomp).each do |line|
+
+  _line = line
+
+  digits = []
+  while !line.empty?
+    c = line[0]
+    rest = line[1..-1]
+
+    if c.match(/[0-9]/)
+      digits << c
+    else
+      match = subs.keys.select { |sub| line.match(/^#{sub}/) }
+      unless match.empty?
+        digits << subs[match.first]
+      end
+    end
+
+    line = rest
+  end
+
+  val = digits[0] + digits[-1]
+  puts "#{val} #{_line}"
+  total += val.to_i
+end
+
+puts total
