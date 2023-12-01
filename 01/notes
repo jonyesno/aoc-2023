@@ -1,0 +1,4 @@
+# part 2
+
+looped through string from front to deal with "...eightwo" needing to be
+"...8wo", not "...eigh2" that the reverse-to-check-from-back approach yields
