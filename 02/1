@@ -1,0 +1,27 @@
+#!/usr/bin/env ruby
+
+conditions = [
+  ->(bag) { bag[:red]   <= 12 },
+  ->(bag) { bag[:green] <= 13 },
+  ->(bag) { bag[:blue]  <= 14 },
+]
+
+total = 0
+ARGF.readlines.each do |game|
+  id, reveals = game.match(/Game (\d+): (.*)$/)[1 .. 2]
+
+  puts "game #{id}: revs: #{reveals}"
+
+  results = reveals.split(/; /).map do |reveal|
+    red   = reveal[/(\d+) red/,   1] || '0'
+    green = reveal[/(\d+) green/, 1] || '0'
+    blue  = reveal[/(\d+) blue/,  1] || '0'
+    puts "r: #{red} g: #{green} b: #{blue}"
+
+    conditions.all? { |c| c.call( { :red => red.to_i, :green => green.to_i, :blue => blue.to_i } ) }
+  end
+
+  total += id.to_i if results.all?
+end
+
+puts total # 2076

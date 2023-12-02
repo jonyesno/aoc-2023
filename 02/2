@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+total = 0
+ARGF.readlines.each do |game|
+  id, reveals = game.match(/Game (\d+): (.*)$/)[1 .. 2]
+
+  puts "game #{id}: revs: #{reveals}"
+
+  red, green, blue = 0, 0, 0
+  reveals.split(/; /).map do |reveal|
+    red   = [reveal[/(\d+) red/,   1].to_i, red].max
+    green = [reveal[/(\d+) green/, 1].to_i, green].max
+    blue  = [reveal[/(\d+) blue/,  1].to_i, blue].max
+  end
+
+  total += red * green * blue
+end
+
+puts total # 70950
