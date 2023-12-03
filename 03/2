@@ -1,0 +1,72 @@
+#!/usr/bin/env ruby
+
+class Grid
+  attr_reader :max_x, :max_y
+
+  def initialize(lines)
+    @lines = lines
+    @max_y = lines.length - 1
+    @max_x = lines.first.length - 1
+  end
+
+  def at(x,y)
+    @lines[y].chars[x]
+  end
+
+  def is_num(x,y)
+    @lines[y][x].match(/\d/)
+  end
+
+  def is_sym(x,y)
+    @lines[y][x] == '*'
+  end
+
+  def near_sym(x,y)
+    [ -1, 0, 1 ].each do |dy|
+      [ -1, 0, 1 ].each do |dx|
+        xx = [ @max_x, [0, x + dx].max ].min
+        yy = [ @max_y, [0, y + dy].max ].min
+        if is_sym(xx,yy)
+          # puts "found #{at(xx,yy)} at [#{xx},#{yy}] for [#{x},#{y}] #{at(x,y)}"
+          return [xx,yy]
+        end
+      end
+    end
+    false
+  end
+end
+
+# add a trailing dot so we always complete `inside_number` before eol
+grid = Grid.new(ARGF.readlines.map(&:chomp).map { |l| l + '.' })
+
+gears = Hash.new { |h,k| h[k] = [] }
+
+(0..grid.max_y).each do |y|
+  inside_number = false
+  found_symbol  = false
+  acc = []
+  (0..grid.max_x).each do |x|
+
+    if grid.is_num(x,y)
+      # started or inside number
+      inside_number = true
+      found_symbol ||= grid.near_sym(x,y)
+      acc << grid.at(x,y)
+    else
+      # finished number
+      if inside_number
+        inside_number = false
+        if found_symbol
+          found = acc.join.to_i
+          # puts "#{found}"
+          gears[ found_symbol ] << found
+          found_symbol = false
+        end
+      end
+      acc = []
+    end
+
+  end
+end
+
+puts gears.values.select { |v| v.length == 2 }.map { |cogs| cogs.inject(:*) }.sum # 69527306
