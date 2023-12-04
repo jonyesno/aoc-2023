@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+
+total = 0
+
+ARGF.readlines.map(&:chomp).each do |card|
+  md = card.match(/Card\s+(\d+): (.*?)\s+\|\s+(.*)$/)[1..3]
+  win = md[1].split(/\s+/)
+  our = md[2].split(/\s+/)
+
+  winners = (win & our).length
+  score = winners > 0 ? 2 ** (winners - 1) : 0
+
+  total += score
+  # puts "card #{md[0]} winners #{winners} score #{score} (#{win.length} v #{our.length})"
+end
+
+puts total # 23235
