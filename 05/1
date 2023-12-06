@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+
+almanac = ARGF.readlines
+  .map(&:chomp)
+  .map { |e| e == "" ? "\n" : e } # fake a delimiter between paragrapsh
+  .map { |e| e.match(/\d$/) ? e + ',' : e } # fake a delimiter between successive ranges
+  .join.split("\n")
+
+seeds = almanac.shift.scan(/(\d+)/).flatten.map(&:to_i)
+
+maps = almanac.map { |a|
+  name = a[/^(.*) map/, 1]
+  ranges = a.scan(/(\d+) (\d+) (\d+)/)
+    .map(&:flatten)
+    .map { |r| r.map(&:to_i) } # ikr
+
+  map = ->(input) do
+    output = nil
+    ranges.each do |r|
+      dst, src, len = r
+      if input >= src && input < src + len
+        output = dst + (input - src )
+      end
+    end
+    output || input
+  end
+
+  [ name, map ]
+}.to_h
+
+# pp seeds
+# pp maps
+# pp maps["seed-to-soil"].call(97)
+# pp maps["seed-to-soil"].call(98)
+# pp maps["seed-to-soil"].call(99)
+
+locations = []
+seeds.each do |seed|
+  soil  = maps["seed-to-soil"].call(seed)
+  fert  = maps["soil-to-fertilizer"].call(soil)
+  water = maps["fertilizer-to-water"].call(fert)
+  light = maps["water-to-light"].call(water)
+  temp  = maps["light-to-temperature"].call(light)
+  humid = maps["temperature-to-humidity"].call(temp)
+  loc   = maps["humidity-to-location"].call(humid)
+
+  locations << loc
+end
+
+puts locations.min # 178159714

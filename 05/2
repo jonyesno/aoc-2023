@@ -1,0 +1,101 @@
+#!/usr/bin/env ruby
+
+almanac = ARGF.readlines
+  .map(&:chomp)
+  .map { |e| e == "" ? "\n" : e } # fake a delimiter between paragrapsh
+  .map { |e| e.match(/\d$/) ? e + ',' : e } # fake a delimiter between successive ranges
+  .join.split("\n")
+
+seed_spec   = almanac.shift.scan(/(\d+)/).flatten.map(&:to_i)
+seed_ranges = seed_spec.each_slice(2).map { |a| (a[0] .. a[0] + a[1] - 1) }
+
+maps = almanac.map { |a|
+  name = a[/^(.*) map/, 1]
+  ranges_maps = a.scan(/(\d+) (\d+) (\d+)/)
+    .map(&:flatten)
+    .map { |r| r.map(&:to_i) } # ikr
+    .map { |r| { :range =>  (r[1] .. r[1] + r[2] - 1), :dest => r[0] } }
+
+  map = ->(_input) do
+    output = []
+    queue  = [ _input ]
+
+    while input = queue.shift
+      STDERR.puts "@@ #{input}"
+
+      outed = output.length
+
+      ranges_maps.each do |r|
+        range_output = []
+        range = r[:range]
+        delta = r[:dest] - range.min
+        STDERR.puts "input #{input} v range #{range} dest #{r[:dest]} delta #{delta}"
+        case
+        when input.max < range.min
+          STDERR.puts "1: #{input} is leftwise of #{range}"
+
+        when input.min > range.max
+          STDERR.puts "2: #{input} is rightwise of #{range}"
+
+        when !range.include?(input.min) && range.include?(input.max)
+          STDERR.puts "3: #{input} is partially leftwise of #{range}"
+          inside = input.max - range.min
+          remnant = (input.min .. range.min - 1)
+          STDERR.puts "requeue #{remnant}"
+          queue.push(remnant)
+          range_output << (range.min + delta .. range.min + delta + inside)
+
+        when range.include?(input.min) && !range.include?(input.max)
+          STDERR.puts "4: #{input} is partially rightwise of #{range}"
+          inside = range.max - input.min
+          remnant = (range.max + 1 .. input.max)
+          STDERR.puts "requeue #{remnant}"
+          queue.push(remnant)
+          range_output << (input.min + delta .. input.min + delta + inside)
+
+        when range.include?(input.min) && range.include?(input.max)
+          STDERR.puts "5: #{input} inside #{range}"
+          range_output << (input.min + delta .. input.max + delta)
+
+        when input.include?(range.min) && input.include?(range.max)
+          STDERR.puts "6: #{range} inside #{input}"
+          queue.push((input.min .. range.min - 1))
+          range_output << (range.min + delta .. range.max + delta)
+          queue.push((range.max + 1 .. input.max))
+
+        else
+          STDERR.puts "nfi #{input} v #{range}"
+          raise RuntimeError
+        end
+
+        unless range_output.empty?
+          STDERR.puts ">: #{input} -> #{range_output.join(',')}"
+          output += range_output
+        end
+
+      end
+
+      if outed == output.length # all ranges declined
+        output << input
+      end
+
+    end
+
+    output = [ _input ] if output.empty?
+
+    STDERR.puts "input #{_input} -> output #{output.sort_by { |x| x.min }.join(',')}"
+    output.uniq
+  end
+
+  [ name, map ]
+}.to_h
+
+soil_ranges  = seed_ranges.map  { |r| maps["seed-to-soil"].call(r) }.flatten.uniq
+fert_ranges  = soil_ranges.map  { |r| maps["soil-to-fertilizer"].call(r) }.flatten.uniq
+water_ranges = fert_ranges.map  { |r| maps["fertilizer-to-water"].call(r) }.flatten.uniq
+light_ranges = water_ranges.map { |r| maps["water-to-light"].call(r) }.flatten.uniq
+temp_ranges  = light_ranges.map { |r| maps["light-to-temperature"].call(r) }.flatten.uniq
+humid_ranges = temp_ranges.map  { |r| maps["temperature-to-humidity"].call(r) }.flatten.uniq
+loc_ranges   = humid_ranges.map { |r| maps["humidity-to-location"].call(r) }.flatten.uniq
+
+puts loc_ranges.sort_by { |r| r.min }.first.min # 100165128
