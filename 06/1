@@ -1,0 +1,29 @@
+#!/usr/bin/env ruby
+
+lines = ARGF.readlines.map(&:chomp)
+
+times = lines[0].split(/\s+/)
+dists = lines[1].split(/\s+/)
+
+times.shift
+dists.shift
+races = times.zip(dists)
+
+results = {}
+
+races.each_with_index do |race, idx|
+  max_time = race[0].to_i
+  max_dist = race[1].to_i
+
+  winners = 0
+  (1 .. max_time).each do |hold|
+    speed = 1 * hold
+    distance = speed * (max_time - hold)
+
+    winners += 1 if distance > max_dist
+  end
+
+  results[idx] = winners
+end
+
+puts results.values.inject(:*) # 160816
