@@ -1,0 +1,116 @@
+#!/usr/bin/env ruby
+
+class Hand
+
+  attr_reader :cards
+  attr_reader :bid
+
+  RANK = {
+    'A' => 14,
+    'K' => 13,
+    'Q' => 12,
+    'T' => 10,
+    '9' => 9,
+    '8' => 8,
+    '7' => 7,
+    '6' => 6,
+    '5' => 5,
+    '4' => 4,
+    '3' => 3,
+    '2' => 2,
+    'J' => 1,
+  }
+
+  def initialize(cards, bid)
+    @cards = cards.chars
+
+    @freqs = Hash.new { |h,k| h[k] = 0 }
+    @cards.each { |c| @freqs[c] += 1 unless c == 'J' }
+
+    @bid = bid.to_i
+
+    @joker = @cards.select { |c| c == 'J' }.count
+  end
+
+  def high
+    @freqs.values.max == 1
+  end
+
+  def one
+    @freqs.values.max == 2 || @joker > 0
+  end
+
+  def two
+    return true if @freqs.values.select { |f| f == 2 }.length == 2
+    return true if @freqs.values.select { |f| f == 2 }.length == 1 && @joker == 1
+    return true if @joker >= 2
+    false
+  end
+
+  def three
+    return true if @freqs.values.select { |f| f == 3 }.length == 1 &&
+                   @freqs.values.select { |f| f == 1 }.length == 2
+    return true if @freqs.values.select { |f| f == 2 }.length == 1 && @joker == 1
+    return true if @joker >= 2
+    false
+  end
+
+  def full
+    return true if @freqs.values.select { |f| f == 3 }.length == 1 &&
+                   @freqs.values.select { |f| f == 2 }.length == 1
+    return true if @freqs.values.select { |f| f == 2 }.length == 2 && @joker == 1
+    return true if @freqs.values.select { |f| f == 2 }.length == 1 && @joker == 2
+    return true if @joker >= 3
+    false
+  end
+
+  def four
+    return true if @freqs.values.max == 4
+    return true if @freqs.values.max == 3 && @joker == 1
+    return true if @freqs.values.max == 2 && @joker == 2
+    return true if @joker >= 3
+    false
+   end
+
+  def five
+    return true if @freqs.values.max == 5
+    return true if @freqs.values.max == 4 && @joker == 1
+    return true if @freqs.values.max == 3 && @joker == 2
+    return true if @freqs.values.max == 2 && @joker == 3
+    return true if @freqs.values.max == 1 && @joker == 4
+    return true if @joker == 5
+    false
+  end
+
+  def score
+    @score = 0 if high
+    @score = 1 if one
+    @score = 2 if two
+    @score = 3 if three
+    @score = 4 if full
+    @score = 5 if four
+    @score = 6 if five
+
+    @score
+  end
+
+  def <=>(other)
+    return  1 if score > other.score
+    return -1 if score < other.score
+
+    @cards.zip(other.cards).each do |pair|
+      return  1 if RANK[pair.first] > RANK[pair.last]
+      return -1 if RANK[pair.first] < RANK[pair.last]
+    end
+
+    raise RuntimeError, "compare failed #{cards.join} v #{other.cards.join}"
+  end
+
+  def to_s
+    "#{cards.join} #{score} #{@freqs}"
+  end
+end
+
+hands = ARGF.readlines.map(&:chomp).map { |hb| Hand.new(*hb.split) }
+
+puts hands.sort.map.with_index { |h, i| h.bid * (i+1) }.sum # 252113488
