@@ -1,0 +1,98 @@
+#!/usr/bin/env ruby
+
+class Hand
+
+  attr_reader :cards
+  attr_reader :bid
+
+  RANK = {
+    'A' => 12,
+    'K' => 11,
+    'Q' => 10,
+    'J' => 9,
+    'T' => 8,
+    '9' => 7,
+    '8' => 6,
+    '7' => 5,
+    '6' => 4,
+    '5' => 3,
+    '4' => 2,
+    '3' => 1,
+    '2' => 0,
+  }
+
+  def initialize(cards, bid)
+    @cards = cards.chars
+
+    @freqs = Hash.new { |h,k| h[k] = 0 }
+    @cards.each { |c| @freqs[c] += 1 }
+
+    @bid = bid.to_i
+
+  end
+
+  def high
+    @freqs.values.max == 1
+  end
+
+  def one
+    @freqs.values.max == 2
+  end
+
+  def two
+    @freqs.values.select { |f| f == 2 }.length == 2
+  end
+
+  def three
+    @freqs.values.select { |f| f == 3 }.length == 1 &&
+    @freqs.values.select { |f| f == 1 }.length == 2
+  end
+
+  def full
+    @freqs.values.select { |f| f == 3 }.length == 1 &&
+    @freqs.values.select { |f| f == 2 }.length == 1
+  end
+
+  def four
+    @freqs.values.max == 4
+  end
+
+  def five
+    @freqs.values.max == 5
+  end
+
+  def score
+    @score = 0 if high
+    @score = 1 if one
+    @score = 2 if two
+    @score = 3 if three
+    @score = 4 if full
+    @score = 5 if four
+    @score = 6 if five
+
+    @score
+  end
+
+  def <=>(other)
+    return  1 if score > other.score
+    return -1 if score < other.score
+
+    @cards.zip(other.cards).each do |pair|
+      return  1 if RANK[pair.first] > RANK[pair.last]
+      return -1 if RANK[pair.first] < RANK[pair.last]
+    end
+
+    raise RuntimeError, "compare failed #{cards.join} v #{other.cards.join}"
+  end
+
+  def to_s
+    "#{cards.join} #{score} #{@freqs}"
+  end
+end
+
+hands = ARGF.readlines.map(&:chomp).map { |hb| Hand.new(*hb.split) }
+
+puts hands.sort.map.with_index { |h, i|  h.bid * (i+1) }.sum # 251806792
+
+
+
