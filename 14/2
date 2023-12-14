@@ -1,0 +1,98 @@
+#!/usr/bin/env ruby
+
+class Grid
+  attr_reader :max_x, :max_y
+  attr_reader :cache
+
+  def initialize(lines)
+    @lines = lines
+    @max_y = lines.length - 1
+    @max_x = lines.first.length - 1
+    @cache = {}
+  end
+
+  def at(x,y)
+    @lines[y][x]
+  end
+
+  def set(x,y,to)
+    @lines[y][x] = to
+  end
+
+  def hash
+    @lines.map { |l| l.hash }.join('-').hash
+  end
+
+  def tilt(gravity)
+    moved = true
+    while moved
+      moved = false
+
+      @lines.each_with_index do |line, y|
+
+        next if y == 0     && gravity == [0,-1]
+        next if y == max_y && gravity == [0,1]
+
+        line.chars.each_with_index do |point, x|
+          next if x == 0     && gravity == [-1,0]
+          next if x == max_x && gravity == [1,0]
+
+          next unless point == 'O'
+
+          xx = x + gravity[0]
+          yy = y + gravity[1]
+
+          next unless at(xx,yy) == '.'
+          set(xx,yy, 'O')
+          set( x, y, '.')
+          moved = true
+        end
+
+      end
+    end
+  end
+
+  def load
+    total = 0
+    @lines.each_with_index do |line, y|
+      line.chars.each_with_index do |point, x|
+        next unless point == 'O'
+        total += max_y - y + 1 # include start and end rows
+      end
+    end
+    total
+  end
+
+  def to_s
+    @lines.join("\n")
+  end
+
+end
+
+grid = Grid.new(ARGF.readlines.map(&:chomp))
+seen = {}
+period = nil
+
+(0..).each do |i|
+  before = grid.hash
+  if seen[before]
+    period = i - seen[before]
+    sequence = 1000000000 % period
+  end
+
+  if sequence && i % period == sequence
+    break
+  end
+
+  grid.tilt([0,-1])
+  grid.tilt([-1,0])
+  grid.tilt([0,1])
+  grid.tilt([1,0])
+
+  seen[before] = i
+
+  print "."
+end
+
+puts
+puts grid.load # 99641
