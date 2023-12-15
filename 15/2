@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+
+steps = ARGF.readlines.map(&:chomp).join.split(',')
+
+class Mash
+  def self.char(current,char)
+    current += char.ord
+    current *= 17
+    current = current % 256
+  end
+
+  def self.str(string)
+    string.chars.inject(0) { |t,n| t = self.char(t,n) }
+  end
+end
+
+boxes = Hash.new { |h,k| h[k] = []  }
+steps.each do |step|
+  label, op, pos = step.match(/^(\w+)([-=])(\d*)/)[ 1 .. 3]
+  box = Mash.str(label)
+
+  lens = step
+  already = boxes[box].select { |l| l.match(/^#{label}=/) }.first
+
+  # `label` is lens-type ("sm")
+  # `lens` is the lens-and-focal-length ("sm=9")
+  # replace lens if one with the same label exists
+  # delete lens by label
+
+  case op
+  when "="
+    if already
+      pos = boxes[box].index(already)
+      boxes[box][pos] = lens
+    else
+      boxes[box] << lens
+    end
+  when "-"
+    if already
+      boxes[box].delete(already)
+    else
+    end
+  end
+end
+
+totals = boxes.sort_by { |k,v| k }.map do |box, lenses|
+  slotfocals = (lenses.map.with_index { |lens, index| lens.split(/=/).last.to_i * (index+1) })
+  !slotfocals.empty? ? slotfocals.sum * (box+1) : 0
+end
+puts totals.sum # 230462
