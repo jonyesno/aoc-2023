@@ -1,0 +1,87 @@
+#!/usr/bin/env ruby
+
+_patterns = ARGF.readlines.map(&:chomp).slice_before { |x| x == "" }.to_a
+
+
+class Pattern
+  def initialize(lines)
+    @lines = lines
+
+    @max = lines.length - 1
+    @reflection = nil
+  end
+
+  def check_line(line)
+    mirror = false
+    above = ( 0 .. line ).to_a.reverse
+    below = ( line + 1 .. @max).to_a
+    above.zip(below).each do |pair|
+      return mirror if pair.include?(nil)
+      if @lines[pair[0]] == @lines[pair[1]]
+        mirror = true
+      else
+        mirror = false
+        return mirror
+      end
+    end
+    return mirror
+  end
+
+  def check_mirror
+    (0 .. @max).each do |line|
+      return line if check_line(line)
+    end
+    false
+  end
+
+
+  def check
+    if line = check_mirror
+      @reflection = line
+      return line + 1
+    end
+    false
+  end
+
+  def to_s
+    @lines.map.with_index { |l, i|
+      case
+      when @reflection == i
+        prefix = 'v'
+      when @reflection == i - 1
+        prefix = '^'
+      else
+        prefix = ' '
+      end
+      "#{prefix} #{sprintf("%02d", i)} #{l}"
+    }.join("\n")
+  end
+
+  def self.transpose(lines)
+    lines.map { |l| l.chars }.transpose.map { |l| l.join }
+  end
+end
+
+total = 0
+_patterns.each do |_p|
+  if _p[0] == ""
+    _p.shift
+  end
+
+  raise RuntimeError unless _p == Pattern.transpose(Pattern.transpose(_p))
+
+  # first search is linewise, for a horizontal mirror
+  pattern = Pattern.new(_p)
+  if line = pattern.check
+    total += line * 100
+    next
+  end
+
+  # flip and look for vertical mirror
+  pattern = Pattern.new(Pattern.transpose(_p))
+  if line = pattern.check
+    total += line
+  end
+end
+
+puts total # 34918

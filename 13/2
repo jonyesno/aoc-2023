@@ -1,0 +1,88 @@
+#!/usr/bin/env ruby
+
+_patterns = ARGF.readlines.map(&:chomp).slice_before { |x| x == "" }.to_a
+
+
+class Pattern
+  def initialize(lines)
+    @lines = lines
+
+    @max = lines.length - 1
+    @reflection  = nil
+    @linediffs = {}
+
+    self.check
+  end
+
+  def found
+    !!@reflection
+  end
+
+  def mirror
+    @reflection + 1
+  end
+
+  def check_line(line)
+    mirror = false
+    above = ( 0 .. line ).to_a.reverse
+    below = ( line + 1 .. @max).to_a
+    diffs = 0
+
+    above.zip(below).each do |pair|
+      break if pair.include?(nil)
+      diffs += @lines[pair[0]].chars.zip(@lines[pair[1]].chars).select { |p| p[0] != p[1] }.length
+    end
+
+    @linediffs[line] = diffs
+  end
+
+  def check_mirror
+    (0 .. @max-1).each { |line| check_line(line) }
+  end
+
+  def check
+    check_mirror
+    @reflection = @linediffs.key(1)
+  end
+
+  def to_s
+    @lines.map.with_index { |l, i|
+      case
+      when @reflection == i
+        prefix = 'v'
+      when @reflection == i - 1
+        prefix = '^'
+      else
+        prefix = ' '
+      end
+      "#{prefix} #{sprintf("%02d", i)} #{l}"
+    }.join("\n")
+  end
+
+  def self.transpose(lines)
+    lines.map { |l| l.chars }.transpose.map { |l| l.join }
+  end
+end
+
+total = 0
+_patterns.each do |_p|
+  if _p[0] == ""
+    _p.shift
+  end
+
+  raise RuntimeError unless _p == Pattern.transpose(Pattern.transpose(_p))
+
+  # first search is linewise, for a horizontal mirror
+  pattern = Pattern.new(_p)
+  if pattern.found
+    total += pattern.mirror * 100
+  end
+
+  # flip and look for vertical mirror
+  pattern = Pattern.new(Pattern.transpose(_p))
+  if pattern.found
+    total += pattern.mirror
+  end
+end
+
+puts total # 33054
