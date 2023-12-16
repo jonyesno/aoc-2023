@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+histories = ARGF.readlines.map(&:chomp).map(&:split).map { |h| h.map(&:to_i) }
+
+total = 0
+
+histories.each do |history|
+  lines = [ history ]
+  while !lines.last.all?(&:zero?)
+    newline = lines.last.each_cons(2).map { _2 - _1 }
+    lines << newline
+  end
+
+  added = 0
+  lines.reverse.drop(1).each do |history|
+    added = history.last + added
+  end
+  total += added
+
+end
+
+puts total # 2075724761
