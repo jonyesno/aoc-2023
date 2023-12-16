@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+
+bits = ARGF.readlines.map(&:chomp).slice_before { _1 == "" }.to_a
+
+instructions = bits.first.first
+rules = {}
+
+bits.last.each do |rule|
+  next if rule.empty?
+  from, left, right = rule.match(/(\w+) = \((\w+), (\w+)\)/)[1 .. 3]
+
+  rules[from] = { :L => left, :R => right }
+end
+
+intervals = []
+nodes = rules.keys.select { |r| r.match(/A$/) }
+
+nodes.each do |node|
+  steps = 0
+
+  instructions.chars.cycle.with_index do |inst|
+    steps += 1
+    node   = rules[node][inst.to_sym]
+
+    if node.match(/Z$/)
+      intervals << steps
+      break
+    end
+  end
+end
+
+puts intervals.inject(1) { |t,n| t.lcm(n) } # 12324145107121
