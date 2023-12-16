@@ -1,0 +1,127 @@
+#!/usr/bin/env ruby
+
+class Grid
+  def initialize(lines)
+    @lines = lines
+    @mx = @lines.first.length - 1
+    @my = @lines.length - 1
+
+    @visited = Hash.new { |h,k| h[k] = [] }
+  end
+
+  def at(pos)
+    @lines[pos[1]][pos[0]]
+  end
+
+  def move(state)
+    pos = state[0]
+    dir = state[1]
+
+    # puts "> #{pos} #{dir} #{at(pos)}"
+    return [] if already_visited?(pos, dir)
+    mark_visited(pos, dir)
+
+    xx = pos[0] + dir[0]
+    yy = pos[1] + dir[1]
+
+    if xx < 0 || xx > @mx
+      return []
+    end
+    if yy < 0 || yy > @my
+      return []
+    end
+
+    newpos = [ xx, yy ]
+    # puts "  #{newpos} #{at(newpos)}"
+
+    case at(newpos)
+    when '.'
+      return [ [ newpos, dir ] ]
+
+    when '\\'
+      case dir
+      when [1,0]
+        return [ [ newpos, [0,1] ] ]
+      when [-1,0]
+        return [ [ newpos, [0,-1] ] ]
+      when [0,1]
+        return [ [ newpos, [1,0] ] ]
+      when [0,-1]
+        return [ [ newpos, [-1,0] ] ]
+      else
+        raise RuntimeError, "mirror #{dir}"
+      end
+
+    when '/'
+      case dir
+      when [1,0]
+        return [ [ newpos, [0,-1] ] ]
+      when [-1,0]
+        return [ [ newpos, [0,1] ] ]
+      when [0,1]
+        return [ [ newpos, [-1,0] ] ]
+      when [0,-1]
+        return [ [ newpos, [1,0] ] ]
+      else
+        raise RuntimeError, "mirror #{dir}"
+      end
+
+    when '|'
+      case dir
+      when [1,0]
+        return [ [ newpos, [0,-1] ], [ newpos, [0,1] ] ]
+      when [-1,0]
+        return [ [ newpos, [0,-1] ], [ newpos, [0,1] ] ]
+      when [0,1]
+        return [ [ newpos, dir ] ]
+      when [0,-1]
+        return [ [ newpos, dir ] ]
+      else
+        raise RuntimeError, "splitter #{dir}"
+      end
+
+    when '-'
+      case dir
+      when [1,0]
+        return [ [ newpos, dir ] ]
+      when [-1,0]
+        return [ [ newpos, dir ] ]
+      when [0,1]
+        return [ [ newpos, [-1,0] ], [ newpos, [1,0] ] ]
+      when [0,-1]
+        return [ [ newpos, [-1,0] ], [ newpos, [1,0] ] ]
+      else
+        raise RuntimeError, "splitter #{dir}"
+      end
+
+    else
+      raise RuntimeError, at(newpos)
+    end
+
+  end
+
+  def traverse
+    queue = [ [[-1,0], [1,0]] ] # start off board
+
+    while beam = queue.shift
+      move(beam).reject(&:empty?).each { |d| queue.push(d) }
+    end
+  end
+
+  def already_visited?(pos, dir)
+    @visited [ pos ].include?(dir)
+  end
+
+  def mark_visited(pos, dir)
+    @visited[ pos ] << dir
+  end
+
+  def count_visited
+    @visited.values.select { |c| !c.empty? }.count - 1 # start off board
+  end
+end
+
+lines = ARGF.readlines.map(&:chomp)
+grid = Grid.new(lines)
+grid.traverse
+puts grid.count_visited # 6855
