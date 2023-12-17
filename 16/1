@@ -1,5 +1,15 @@
 #!/usr/bin/env ruby
 
+class Struct; def to_a; [self] end end # make `Array(photon)` work
+Photon = Struct.new(:pos, :dir)
+Pos = Struct.new(:x, :y)
+Drn = Struct.new(:x, :y)
+
+LEFT  = Drn.new(-1,0)
+RIGHT = Drn.new(1,0)
+UP    = Drn.new(0,-1)
+DOWN  = Drn.new(0,1)
+
 class Grid
   def initialize(lines)
     @lines = lines
@@ -10,88 +20,83 @@ class Grid
   end
 
   def at(pos)
-    @lines[pos[1]][pos[0]]
+    @lines[pos.y][pos.x]
   end
 
-  def move(state)
-    pos = state[0]
-    dir = state[1]
+  def move(photon)
+    return nil if already_visited?(photon)
+    mark_visited(photon)
 
-    # puts "> #{pos} #{dir} #{at(pos)}"
-    return [] if already_visited?(pos, dir)
-    mark_visited(pos, dir)
-
-    xx = pos[0] + dir[0]
-    yy = pos[1] + dir[1]
+    xx = photon.pos.x + photon.dir.x
+    yy = photon.pos.y + photon.dir.y
 
     if xx < 0 || xx > @mx
-      return []
+      return nil
     end
     if yy < 0 || yy > @my
-      return []
+      return nil
     end
 
-    newpos = [ xx, yy ]
-    # puts "  #{newpos} #{at(newpos)}"
+    newpos = Pos.new(xx, yy)
 
     case at(newpos)
     when '.'
-      return [ [ newpos, dir ] ]
+      return Photon.new(newpos, photon.dir)
 
     when '\\'
-      case dir
-      when [1,0]
-        return [ [ newpos, [0,1] ] ]
-      when [-1,0]
-        return [ [ newpos, [0,-1] ] ]
-      when [0,1]
-        return [ [ newpos, [1,0] ] ]
-      when [0,-1]
-        return [ [ newpos, [-1,0] ] ]
+      case photon.dir
+      when RIGHT
+        return Photon.new(newpos, DOWN)
+      when LEFT
+        return Photon.new(newpos, UP)
+      when DOWN
+        return Photon.new(newpos, RIGHT)
+      when UP
+        return Photon.new(newpos, LEFT)
       else
-        raise RuntimeError, "mirror #{dir}"
+        raise RuntimeError, "mirror #{photon.dir}"
       end
 
     when '/'
-      case dir
-      when [1,0]
-        return [ [ newpos, [0,-1] ] ]
-      when [-1,0]
-        return [ [ newpos, [0,1] ] ]
-      when [0,1]
-        return [ [ newpos, [-1,0] ] ]
-      when [0,-1]
-        return [ [ newpos, [1,0] ] ]
+      case photon.dir
+      when RIGHT
+        return Photon.new(newpos, UP)
+      when LEFT
+        return Photon.new(newpos, DOWN)
+      when DOWN
+        return Photon.new(newpos, LEFT)
+      when UP
+        return Photon.new(newpos, RIGHT)
       else
-        raise RuntimeError, "mirror #{dir}"
+        raise RuntimeError, "mirror #{photon.dir}"
       end
 
     when '|'
-      case dir
-      when [1,0]
-        return [ [ newpos, [0,-1] ], [ newpos, [0,1] ] ]
-      when [-1,0]
-        return [ [ newpos, [0,-1] ], [ newpos, [0,1] ] ]
-      when [0,1]
-        return [ [ newpos, dir ] ]
-      when [0,-1]
-        return [ [ newpos, dir ] ]
+      case photon.dir
+      when RIGHT
+        return [ Photon.new(newpos, UP), Photon.new(newpos, DOWN) ]
+      when LEFT
+        return [ Photon.new(newpos, UP), Photon.new(newpos, DOWN) ]
+      when DOWN
+        return Photon.new(newpos,photon.dir)
+      when UP
+        return Photon.new(newpos,photon.dir)
       else
-        raise RuntimeError, "splitter #{dir}"
+        raise RuntimeError, "splitter #{photon.dir}"
       end
 
     when '-'
-      case dir
-      when [1,0]
-        return [ [ newpos, dir ] ]
-      when [-1,0]
-        return [ [ newpos, dir ] ]
-      when [0,1]
-        return [ [ newpos, [-1,0] ], [ newpos, [1,0] ] ]
-      when [0,-1]
-        return [ [ newpos, [-1,0] ], [ newpos, [1,0] ] ]
+      case photon.dir
+      when RIGHT
+        return Photon.new(newpos,photon.dir)
+      when LEFT
+        return Photon.new(newpos,photon.dir)
+      when DOWN
+        return [ Photon.new(newpos, LEFT), Photon.new(newpos, RIGHT) ]
+      when UP
+        return [ Photon.new(newpos, LEFT), Photon.new(newpos, RIGHT) ]
       else
-        raise RuntimeError, "splitter #{dir}"
+        raise RuntimeError, "splitter #{photon.dir}"
       end
 
     else
@@ -101,19 +106,19 @@ class Grid
   end
 
   def traverse
-    queue = [ [[-1,0], [1,0]] ] # start off board
+    queue = [ Photon.new(Pos.new(-1,0), Drn.new(1,0)) ] # start off board
 
-    while beam = queue.shift
-      move(beam).reject(&:empty?).each { |d| queue.push(d) }
+    while photon = queue.shift
+      Array(move(photon)).reject(&:nil?).each { |d| queue.push(d) }
     end
   end
 
-  def already_visited?(pos, dir)
-    @visited [ pos ].include?(dir)
+  def already_visited?(state)
+    @visited [ state.pos ].include?(state.dir)
   end
 
-  def mark_visited(pos, dir)
-    @visited[ pos ] << dir
+  def mark_visited(state)
+    @visited[ state.pos ] << state.dir
   end
 
   def count_visited
