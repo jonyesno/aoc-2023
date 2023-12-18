@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+
+_plan = ARGF.readlines.map(&:chomp)
+
+Pos = Struct.new(:x, :y)
+Drn = Struct.new(:x, :y)
+
+Deltas = {
+  'L' => Drn.new(-1,0),
+  'R' => Drn.new(1,0),
+  'U' => Drn.new(0,-1),
+  'D' => Drn.new(0,1),
+}
+
+min_x, min_y, max_x, max_y = 0,0,0,0
+
+plan = Hash.new { |h,k| h[k] = '.' }
+
+start = Pos.new(0,0)
+plan[start] = '#'
+
+pos = start
+
+_plan.each do |p|
+  dir, dist = p.match(/^(\w)\ (\d+)/)[1 .. 2]
+  delta = Deltas[dir]
+
+  (1 .. dist.to_i).each do
+    newpos = Pos.new(pos.x + delta.x, pos.y + delta.y)
+    plan[newpos] = '#'
+    pos = newpos
+  end
+
+  min_x = [ min_x, pos.x ].min
+  max_x = [ max_x, pos.x ].max
+  min_y = [ min_y, pos.y ].min
+  max_y = [ max_y, pos.y ].max
+end
+
+
+# terrible
+guess = Pos.new
+catch :guess do
+  (min_y .. max_y).each do |y|
+    inside = false
+    (min_x .. max_x).each do |x|
+      pos = Pos.new(x,y)
+
+      case
+      when plan[pos] == '#' && plan[Pos.new(x+1,y)] == '#'
+        # bail this line
+        break
+      when plan[pos] == '#'
+        inside = true
+      when inside && plan[pos] == '.'
+        puts "found #{pos}"
+        guess = pos
+        throw :guess
+      end
+    end
+  end
+end
+
+queue = [ guess ]
+plan[guess] = 'S' # evade "already done?" test below
+painted = 0
+
+while pos = queue.shift
+  next if plan[pos] == '#' # someone else set it, skip
+  plan[pos] = '#'
+  painted += 1
+
+  Deltas.values.each do |d|
+    newpos = Pos.new(pos.x + d.x, pos.y + d.y)
+    if  newpos.x < min_x ||
+        newpos.x > max_x ||
+        newpos.y < min_y ||
+        newpos.y > max_y
+      raise RuntimeError, "turns out... #{pos} -> #{newpos}"
+    end
+    queue << newpos if plan[newpos] != '#'
+  end
+end
+
+puts plan.values.select { |p| p == '#' }.count # 47045
+
+__END__
+
+(min_y .. max_y).each do |y|
+  print "#{y} "
+  (min_x .. max_x).each do |x|
+    print plan[Pos.new(x,y)]
+  end
+  puts
+end

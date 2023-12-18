@@ -10,10 +10,10 @@ end
 Drn = Struct.new(:x, :y)
 
 Deltas = {
-  'L' => Drn.new(-1,0),
-  'R' => Drn.new(1,0),
-  'U' => Drn.new(0,-1),
-  'D' => Drn.new(0,1),
+  '0' => Drn.new(1,0),
+  '1' => Drn.new(0,1),
+  '2' => Drn.new(-1,0),
+  '3' => Drn.new(0,-1),
 }
 
 pos = Pos.new(0,0)
@@ -21,8 +21,8 @@ points = [ pos ]
 
 perimiter = 0
 _plan.each do |p|
-  dir, _dist = p.match(/^(\w)\ (\d+)/)[1 .. 2]
-  dist = _dist.to_i
+  _dist, dir = p.match(/#(\w{5})(\w)/)[1..2]
+  dist = _dist.to_i(16)
   delta = Deltas[dir]
 
   pos = Pos.new(pos.x + dist*delta.x, pos.y + dist*delta.y)
@@ -31,7 +31,7 @@ _plan.each do |p|
   perimiter += dist
 end
 
-puts points.each_cons(2).sum { |p1,p2| p1.shoelace(p2) }.abs/2 + perimiter/2 + 1 # 47045
+puts points.each_cons(2).sum { |p1,p2| p1.shoelace(p2) }.abs/2 + perimiter/2 + 1 # 147839570293376
 
 __END__
 
