@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+
+Pos = Struct.new(:x, :y) do
+  def to_s
+    "#{x},#{y}"
+  end
+end
+Drn = Struct.new(:x, :y) do
+  def to_s
+    "#{x},#{y}"
+  end
+end
+
+State = Struct.new(
+  :pos,
+  :dir,
+  :succ
+)
+Queuable = Struct.new(:loss, :state)
+
+map = ARGF.readlines.map(&:chomp).map(&:chars).map { |l| l.map(&:to_i) }
+max_x = map.first.length - 1
+max_y = map.length - 1
+
+visit = Hash.new { |h,k| h[k] = false }        # keyed by State
+
+deltas = [ [-1,0], [1,0], [0,-1], [0,1] ].map { |d| Drn.new(*d) }
+start  = Pos.new(0,0)
+finish = Pos.new(max_x, max_y)
+
+queue = [ Queuable.new(0, State.new(Pos.new(0,0), Drn.new(0,0), 0)) ]
+
+while q = queue.min_by { |q| q.loss }
+  queue.delete(q)
+
+  pos  = q.state.pos
+  dir  = q.state.dir
+  succ = q.state.succ
+  loss = q.loss
+
+  # puts "> @#{pos} d#{dir}"
+  if pos == finish
+    puts loss # 1073
+    break
+  end
+
+  if visit[q.state]
+    # puts "A #{pos}/#{dir}/#{succ}"
+    next
+  end
+  visit[q.state] = true
+
+  if succ < 10 && dir != Drn.new(0,0)
+    newpos = Pos.new(pos.x + dir.x, pos.y + dir.y)
+    unless newpos.x < 0     || newpos.x > max_x ||
+        newpos.y > max_x || newpos.y > max_x
+      # puts "3 @#{pos} d#{dir} -> #{newpos} #{succ+1}"
+      queue.push(Queuable.new(loss + map[newpos.x][newpos.y], State.new(newpos, dir, succ + 1)))
+    end
+  end
+
+  if succ >= 4 || pos == start
+    forwards  = dir
+    backwards = Drn.new(-dir.x,-dir.y)
+    deltas.each do |d|
+      next if d == forwards
+      next if d == backwards
+
+      newpos = Pos.new(pos.x + d.x, pos.y + d.y)
+
+      next if newpos.x < 0 || newpos.x > max_x
+      next if newpos.y < 0 || newpos.y > max_y
+
+      # puts "t @#{pos} d#{dir} -> #{newpos} 1"
+      queue.push(Queuable.new(loss + map[newpos.x][newpos.y], State.new(newpos, d, 1)))
+    end
+  end
+
+end
