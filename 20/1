@@ -1,0 +1,172 @@
+#!/usr/bin/env ruby
+
+Signal = Struct.new(:pulse, :from, :to)
+
+class Mod
+   attr_reader :name, :state
+
+   def initialize(name, broker)
+      @name = name.gsub(/^[%&]/, '')
+      @broker = broker
+
+      @recv = []
+      @pulse = nil
+
+      @sources = []
+      @targets = []
+      self.state
+   end
+
+   def recv(signal)
+      raise RuntimeError, "full" unless @input.nil?
+      @input = signal
+   end
+
+   def add_recv(source)
+      @sources << source
+   end
+
+   def add_xmit(target)
+      @targets << target
+   end
+
+   def compute
+      # sub
+   end
+   def state
+      # sub
+   end
+
+   def tick
+      return if @input.nil?
+
+      self.compute
+      @input = nil
+
+      return if @pulse.nil?
+
+      @targets.each do |tgt|
+         @broker.send(Signal.new(@pulse, name, tgt))
+      end
+
+      @pulse = nil
+   end
+end
+
+class Broadcast < Mod
+   def compute
+      @pulse = @input.pulse
+   end
+end
+
+class FlipFlop < Mod
+   def state
+      @state = :low
+   end
+
+   def compute
+      case @input.pulse
+      when :high
+         # nothing
+      when :low
+         @state = @state == :low ? :high : :low
+         @pulse = @state
+      end
+
+   end
+end
+
+class Conjunction < Mod
+   def state
+      @state = Hash.new { |h,k| h[k] = :low }
+   end
+
+   def compute
+      @state[@input.from] = @input.pulse
+      if @sources.map { |s| @state[s] == :high }.all?
+         @pulse = :low
+      else
+         @pulse = :high
+      end
+   end
+end
+
+class Output < Mod
+   def state
+      @state = []
+   end
+   def recv(val)
+      @state << val
+   end
+end
+
+class Broker
+   def initialize
+      @modules = {}
+      @queue = []
+      @stats = { :high => 0, :low => 0 }
+   end
+
+   def add_module(mod)
+      @modules[mod.name] = mod
+   end
+
+   def module(name)
+      @modules[name]
+   end
+
+   def send(signal)
+      # puts "x #{signal.from} -#{signal.pulse}-> #{signal.to}"
+      @queue << signal
+      @stats[signal.pulse] += 1
+   end
+
+   def loop
+      while !@queue.empty?
+         signal = @queue.shift
+         @modules[signal.to].recv(signal)
+         @modules[signal.to].tick
+      end
+   end
+
+   def stats
+      @stats[:high] * @stats[:low]
+   end
+end
+
+broker = Broker.new
+
+config = ARGF.readlines.map(&:chomp)
+config.each do |c|
+   name, targets = c.match(/^(.*?) -> (.*)$/)[1..2]
+   case name
+   when /^\w/
+      broker.add_module(Broadcast.new(name, broker))
+   when /^%/
+      broker.add_module(FlipFlop.new(name, broker))
+   when /^&/
+      broker.add_module(Conjunction.new(name, broker))
+   else
+      raise RuntimeError, name
+   end
+end
+
+config.each do |c|
+   src, targets = c.match(/^\W?(.*?) -> (.*)$/)[1..2]
+   targets.split(', ').each do |tgt|
+      unless broker.module(tgt)
+         broker.add_module(Mod.new(tgt, broker))
+      end
+      broker.module(src).add_xmit(tgt)
+      broker.module(tgt).add_recv(src)
+   end
+end
+
+broker.add_module(Mod.new('button', broker))
+broker.module('broadcaster').add_recv('button')
+(1..1000).each do |i|
+   broker.send(Signal.new(:low, 'button', 'broadcaster'))
+   broker.loop
+end
+
+puts broker.stats # 731517480
